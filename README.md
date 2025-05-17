@@ -1,17 +1,26 @@
-# Ask My Docs - PDF Q&A Application
+# Ask My Docs - PDF Q&A Application with Authentication
 
-This application allows you to upload PDF documents and ask questions about their content using Retrieval-Augmented Generation (RAG). The app extracts text from PDFs, breaks it into chunks, generates embeddings, and uses a language model to answer queries based on the most relevant chunks.
+This application allows you to upload PDF documents and ask questions about their content using Retrieval-Augmented Generation (RAG). The app includes user authentication, enabling multiple users to have their own private document collections.
 
 ## Features
 
-- Upload and manage multiple PDF documents
-- Extract and process text from PDFs
-- Generate embeddings for semantic search using OpenAI or Hugging Face models
-- Store documents and metadata in SQLite database
-- Query documents using natural language
-- Get answers with source context for verification
-- Mobile-friendly interface with optimized UI for smaller screens
-- Support for both OpenAI and Hugging Face embedding models
+- **User Authentication**:
+  - User registration and login
+  - Password reset functionality
+  - User-specific document collections
+  - Secure password hashing
+
+- **Document Management**:
+  - Upload and manage multiple PDF documents
+  - Extract and process text from PDFs
+  - Generate embeddings for semantic search using OpenAI or Hugging Face models
+  - Store documents and metadata in SQLite database
+
+- **Document Querying**:
+  - Query documents using natural language
+  - Get answers with source context for verification
+  - Mobile-friendly interface with optimized UI for smaller screens
+  - Support for both OpenAI and Hugging Face embedding models
 
 ## Requirements
 
@@ -49,6 +58,9 @@ OPENAI_MODEL=gpt-3.5-turbo
 # Database Settings
 DB_PATH=pdf_qa.db
 VECTOR_STORE_DIR=vector_stores
+
+# Authentication Settings
+SECRET_KEY=your-secret-key-for-password-hashing  # Change this to a random string in production
 ```
 
 ## Running the Application
@@ -68,33 +80,58 @@ And manually navigate to http://localhost:8501 in your browser.
 
 ## How to Use
 
-1. **Upload a PDF**: 
+1. **Register an Account**:
+   - Create a new account with a username, email, and password
+   - Or log in with your existing credentials
+
+2. **Upload a PDF**: 
    - Use the file uploader in the sidebar to upload a PDF document
    - If a document with the same name already exists, you'll be given options to:
      - Use the existing document
      - Process it as a new document
 
-2. **Select a Document**: 
+3. **Select a Document**: 
    - Click on a document in the sidebar to select it for querying
    - The sidebar automatically closes on mobile after selection for better viewing
 
-3. **Ask Questions**: 
+4. **Ask Questions**: 
    - Type your question in the text input field and press Enter
    - Use quick query buttons for common questions like "Summarize document" or "Key points"
 
-4. **View Answers**: 
+5. **View Answers**: 
    - See the generated answer directly in the main view
    - Explore source context in the expandable section below to verify information
 
-5. **Manage Documents**: 
+6. **Manage Documents**: 
    - Delete documents you no longer need using the trash icon (🗑️)
    - Reprocess documents with the refresh icon (🔄) if you change embedding models
    - Navigate between documents using the "Choose another document" button
    - Return to the home screen using the "Home" button in the top-right corner
 
-6. **Mobile Usage**:
-   - Tap the **≡** menu icon in the top-left corner to access the sidebar
-   - All buttons are larger and full-width for easier tapping on mobile devices
+7. **Account Management**:
+   - Access account options through the user menu in the top-right corner
+   - Log out when you're finished using the application
+   - Reset your password if you forget it
+
+## Authentication System
+
+The application includes a complete user authentication system with the following features:
+
+- **User Registration**: Create an account with username, email, and password
+- **Secure Password Storage**: Passwords are securely hashed using HMAC-SHA256
+- **Login/Logout**: Session-based authentication
+- **Password Reset**: Token-based password reset functionality
+- **User-Specific Documents**: Each user can only see and access their own documents
+- **Access Control**: Documents are associated with specific users for privacy
+
+### Security Notes
+
+- For production use, additional security measures should be implemented:
+  - Use HTTPS for all connections
+  - Add rate limiting for login attempts
+  - Implement proper email-based password reset
+  - Consider adding two-factor authentication
+  - Use a more secure session management system
 
 ## OpenAI Integration
 
@@ -133,99 +170,65 @@ When using OpenAI models, be aware of the associated costs:
 
 For most personal or small-scale use, these costs will be minimal.
 
-## Handling Embedding Model Changes
-
-If you switch between different embedding models (e.g., from Hugging Face to OpenAI), you may encounter a dimension mismatch error when querying previously processed documents:
-
-```
-Dimension mismatch error detected. This happens when a document was embedded with a different model.
-```
-
-**Why this happens**: Different embedding models produce vectors of different dimensions. For example, OpenAI's embeddings are 1536 dimensions while Hugging Face's model might use 384 dimensions.
-
-**How to fix**:
-1. When you see this error, click the 🔄 button next to the document to remove it
-2. This will remove the document (but keep the original PDF)
-3. Re-upload the document to process it with your current embedding settings
-
-The application tracks which embedding model was used for each document to help you identify when this issue might occur.
-
 ## Troubleshooting
 
-### GPU/CUDA Issues
+### Authentication Issues
 
-If you encounter an error like `AssertionError: Torch not compiled with CUDA enabled`, follow these steps:
+- **Can't Login**: Make sure you're using the correct username and password
+- **Password Reset**: In this demo version, reset tokens are displayed on screen (in a production environment, these would be sent by email)
+- **Database Issues**: If you encounter database errors, check that the DB_PATH in your .env file is correct
 
-1. Set `DEVICE=cpu` in your `.env` file
-2. Restart the application
+### Document Issues
 
-If you want to use GPU acceleration (which is faster), you'll need to reinstall PyTorch with CUDA support:
-
-```bash
-# For CUDA 11.8 (adjust version as needed)
-pip uninstall torch -y
-pip install torch --index-url https://download.pytorch.org/whl/cu118
-```
-
-### Deserialization Security Issues
-
-If you encounter this error:
-```
-ValueError: The de-serialization relies loading a pickle file. Pickle files can be modified to deliver a malicious payload...
-```
-
-This is a security feature in newer versions of LangChain. The application has been updated to handle this correctly for both older and newer versions of LangChain.
-
-### Mobile-Specific Issues
-
-- **UI Elements Duplicating**: If UI elements appear multiple times, simply refresh the page (this has been fixed in the latest version)
-- **Button Size Too Small**: All buttons have been made full-width for easier tapping on mobile screens
-
-### Other Common Issues
-
-- **Memory Errors**: For large PDFs, reduce `CHUNK_SIZE` or process them in batches
-- **Model Downloads**: The first run might take longer as it downloads required models
-- **Import Errors**: If you encounter import errors, make sure you've installed the latest versions of langchain and langchain-community
-- **File Not Found**: Make sure the vector_stores directory exists in your project folder
-
-## How It Works
-
-1. **PDF Processing**: 
-   - Extract text from PDF using PyPDFLoader
-   - Split text into chunks with RecursiveCharacterTextSplitter
-   - Generate embeddings using OpenAI or Sentence Transformers
-
-2. **Storage**:
-   - Store document metadata in SQLite
-   - Save vector embeddings using FAISS
-   - Track embedding type for each document
-
-3. **Query Processing**:
-   - Convert query to embedding using the same model that processed the document
-   - Retrieve relevant document chunks
-   - Generate answer using OpenAI's language models
-
-## Customization
-
-You can customize various aspects of the application:
-
-- **Embedding Model**: Change `EMBEDDING_MODEL` in the `.env` file to use a different model
-- **Language Model**: Change `OPENAI_MODEL` to use a different model (e.g., gpt-4)
-- **Chunk Size**: Adjust `CHUNK_SIZE` for different document splitting granularity
-- **Retrieval Settings**: Modify the number of chunks retrieved for different query types
+- **Dimension Mismatch Error**: Follow the instructions to reprocess the document
+- **GPU/CUDA Issues**: Set `DEVICE=cpu` in your .env file and restart
+- **Mobile-Specific Issues**: Ensure you're using the latest version of the app
 
 ## Future Enhancements
 
 Some potential improvements to consider:
 
-1. **User Authentication**: Add login functionality to keep documents private per user
-2. **OCR Support**: Implement Optical Character Recognition for scanned PDFs
-3. **Multiple File Upload**: Allow batch processing of multiple PDFs
-4. **Custom Prompt Templates**: Let users define their own prompts for specific document types
-5. **Advanced Search Options**: Add filtering, date range constraints, and metadata search
-6. **Visualization**: Add data visualization for document statistics and relationship graphs
-7. **Export/Import**: Enable exporting processed documents and importing them on other instances
-8. **Progressive Web App**: Convert to PWA for better mobile experience with offline capabilities
+1. **Enhanced Authentication**:
+   - Email verification for new accounts
+   - Two-factor authentication
+   - OAuth integration (Google, GitHub, etc.)
+
+2. **User Management**:
+   - Admin panel for user management
+   - User groups and roles
+   - Document sharing between users
+
+3. **Document Features**:
+   - OCR Support for scanned PDFs
+   - Multiple file upload for batch processing
+   - Support for additional file types (DOCX, TXT, etc.)
+
+4. **UI Improvements**:
+   - Visualization for document statistics
+   - Dark mode toggle
+   - Progressive Web App support
+
+## How It Works
+
+1. **Authentication Flow**:
+   - User credentials stored securely in SQLite
+   - Password hashing with HMAC-SHA256
+   - Session-based authentication with Streamlit
+
+2. **PDF Processing**: 
+   - Extract text from PDF using PyPDFLoader
+   - Split text into chunks with RecursiveCharacterTextSplitter
+   - Generate embeddings using OpenAI or Sentence Transformers
+
+3. **Storage**:
+   - Store document metadata in SQLite with user association
+   - Save vector embeddings using FAISS
+   - Track embedding type for each document
+
+4. **Query Processing**:
+   - Convert query to embedding using the same model that processed the document
+   - Retrieve relevant document chunks
+   - Generate answer using OpenAI's language models
 
 ## Contributing
 
